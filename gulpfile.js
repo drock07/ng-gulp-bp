@@ -1,83 +1,162 @@
 var gulp = require('gulp');
-
-// load plugins
-var jshint = require('gulp-jshint');
+var pkg = require('./package.json');
+var browserSync = require('browser-sync');
+var stylus = require('gulp-stylus');
+var rename = require('gulp-rename');
+var del = require('del');
 var inject = require('gulp-inject');
 var es = require('event-stream');
-var del = require('del');
-var browserSync = require('browser-sync');
+var angularFilesort = require('gulp-angular-filesort');
+var concat = require('gulp-concat');
+var order = require('gulp-order');
 
-var buildConfig = require('./build.config.js');
+//////////////////
+//  File paths  //
+//////////////////
+var filepaths = {
+    app: {
+        js: [
+            './src/app/**/*.js',
+            '!./src/app/**/*.spec.js'
+        ],
+        stylus: './src/stylus/main.styl',
+        assets: './src/assets/**/*.*',
+        fonts: './src/fonts/**/*.*'
+    },
+    vendor: {
+        css: [
+            './vendor/bootstrap/dist/css/bootstrap.css'
+        ],
+        fonts: [
+            './vendor/bootstrap/dist/fonts/glyphicons-halflings-regular.{ttf,eot,svg,woff}'
+        ],
+        assets: [
+        ],
+        js: [
+            './vendor/angular/angular.js'
+        ]
+    },
+    buildDir: './build',
+    distDir: './dist'
+};
 
 ///////////////////
-//  Clean tasks  //
+//  BrowserSync  //
 ///////////////////
 
-gulp.task('clean:build', function(cb) {
-    del([
-        buildConfig.build_dir
-    ], cb);
-});
-
-gulp.task('clean:dist', function(cb) {
-    del([
-        buildConfig.compile_dir
-    ], cb);
-});
-
-//////////////
-//  JSHint  //
-//////////////
-
-gulp.task('jshint', function() {
-    gulp.src(buildConfig.app_files.js)
-        .pipe(jshint())
-        .pipe(jshint.reporter('default'));
-});
-
-////////////////////
-//  Browser-Sync  //
-////////////////////
-
-gulp.task('browser-sync', ['build'], function() {
-    browserSync([], {
+gulp.task('browser-sync', function() {
+    browserSync({
         server: {
-            baseDir: buildConfig.build_dir
+            baseDir: filepaths.buildDir
         }
     });
 });
 
-///////////////////
-//  Build tasks  //
-///////////////////
+/////////////
+//  Clean  //
+/////////////
 
-gulp.task('index:build', ['clean:build'], function() {
-    var venderStream = gulp.src(buildConfig.vendor_files.js.concat(buildConfig.vendor_files.css), {read: false});
-    var appStream = gulp.src(buildConfig.app_files.js, {read: false});
-
-    return gulp.src(buildConfig.app_files.html)
-        .pipe(inject(venderStream, {
-            name: 'vendor',
-            ignorePath: 'vendor',
-            addPrefix: 'assets'
-        }))
-        .pipe(inject(appStream, {
-            ignorePath: 'src',
-            addPrefix: 'assets'
-        }))
-        .pipe(gulp.dest(buildConfig.build_dir));
+gulp.task('clean:build', function(cb) {
+    del([filepaths.buildDir], cb);
 });
 
-gulp.task('build', ['clean:build', 'index:build'], function() {
-    // copy vendor js
-    gulp.src(buildConfig.vendor_files.js, {base: 'vendor/'})
-        .pipe(gulp.dest(buildConfig.build_assets_dir));
-
-    // copy app js
-    gulp.src(buildConfig.app_files.js, {base: 'src'})
-        .pipe(jshint())
-        .pipe(jshint.reporter('default'))
-        .pipe(gulp.dest(buildConfig.build_assets_dir));
+gulp.task('clean:dist', function(cb) {
+    del([filepaths.distDir], cb);
 });
 
-gulp.task('default', ['build']);
+/////////////////
+//  CLI Tasks  //
+/////////////////
+
+gulp.task('build', ['clean:build'], function() {
+
+    // copy vendor stuff
+    var vendorJs = gulp.src(filepaths.vendor.js, {base: 'vendor'})
+                       .pipe(gulp.dest(filepaths.buildDir+'/vendor'));
+
+    var vendorCss = gulp.src(filepaths.vendor.css, {base: 'vendor'})
+                        .pipe(rename(function(path) {
+                            path.dirname = '';
+                        }))
+                       .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+
+    gulp.src(filepaths.vendor.assets, {base:'vendor'})
+        .pipe(rename(function(path) {
+            path.dirname = '';
+        }))
+        .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+
+    gulp.src(filepaths.vendor.fonts, {base:'vendor'})
+        .pipe(rename(function(path) {
+            path.dirname = '';
+        }))
+        .pipe(gulp.dest(filepaths.buildDir+'/fonts'));
+
+    // copy app stuff
+    var appCss = gulp.src(filepaths.app.stylus)
+                     .pipe(stylus())
+                     .pipe(rename(pkg.name+'.'+pkg.version+'.css'))
+                     .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+
+    var appJs = gulp.src(filepaths.app.js, {base:'src'})
+                    .pipe(gulp.dest(filepaths.buildDir))
+                    .pipe(angularFilesort());
+
+    gulp.src(filepaths.app.assets)
+        .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+
+    gulp.src(filepaths.app.fonts)
+        .pipe(gulp.dest(filepaths.buildDir+'/fonts'));
+
+    return gulp.src('./src/index.html')
+               .pipe(inject(es.merge(vendorCss, vendorJs), {name:'vendor', ignorePath:'build'}))
+               .pipe(inject(es.merge(appCss, appJs), {ignorePath:'build'}))
+               .pipe(gulp.dest(filepaths.buildDir));
+
+});
+
+gulp.task('dist', ['clean:dist'], function() {
+    var vendorJs = gulp.src(filepaths.vendor.js)
+                       .pipe(concat('vendor.js'))
+                       .pipe(gulp.dest(filepaths.distDir+'/assets'));
+    var appJs = gulp.src(filepaths.app.js)
+                    .pipe(angularFilesort())
+                    .pipe(concat(pkg.name+'.'+pkg.version+'.js'))
+                    .pipe(gulp.dest(filepaths.distDir+'/assets'));
+
+    var js = es.merge(vendorJs, appJs).pipe(order(['vendor.js', pkg.name+'.'+pkg.version+'.js']));
+
+    var appCss = gulp.src(filepaths.app.stylus)
+                     .pipe(stylus({compress:true}));
+
+    var css = es.merge(gulp.src(filepaths.vendor.css), appCss)
+                  .pipe(order([
+                    'vendor/**/*.css'
+                  ]))
+                  .pipe(concat(pkg.name+'.'+pkg.version+'.css'))
+                  .pipe(gulp.dest(filepaths.distDir+'/assets'));
+
+    gulp.src(filepaths.app.assets)
+        .pipe(gulp.dest(filepaths.distDir+'/assets'));
+
+    gulp.src(filepaths.app.fonts)
+        .pipe(gulp.dest(filepaths.distDir+'/fonts'));
+
+    return gulp.src('./src/index.html')
+               .pipe(inject(es.merge(js,css), {ignorePath:'dist'}))
+               .pipe(gulp.dest(filepaths.distDir));
+});
+
+gulp.task('default', ['build', 'browser-sync'], function() {
+    gulp.watch('./src/**/*.styl', function() {
+        return gulp.src(filepaths.app.stylus)
+                   .pipe(stylus())
+                   .pipe(rename(pkg.name+'.'+pkg.version+'.css'))
+                   .pipe(gulp.dest(filepaths.buildDir+'/assets'))
+                   .pipe(browserSync.reload({stream:true}));
+    });
+
+    gulp.watch(filepaths.app.js, ['build', browserSync.reload]);
+
+    gulp.watch('./src/index.html', ['build', browserSync.reload]);
+});
