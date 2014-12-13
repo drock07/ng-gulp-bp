@@ -14,7 +14,8 @@ var html2js = require('gulp-html2js');
 //////////////////
 //  File paths  //
 //////////////////
-var filepaths = {
+var config = {
+    templateModuleName: 'App.Templates',
     app: {
         js: [
             './src/app/**/*.js',
@@ -51,7 +52,7 @@ var filepaths = {
 gulp.task('browser-sync', function() {
     browserSync({
         server: {
-            baseDir: filepaths.buildDir
+            baseDir: config.buildDir
         }
     });
 });
@@ -61,11 +62,11 @@ gulp.task('browser-sync', function() {
 /////////////
 
 gulp.task('clean:build', function(cb) {
-    del([filepaths.buildDir], cb);
+    del([config.buildDir], cb);
 });
 
 gulp.task('clean:dist', function(cb) {
-    del([filepaths.distDir], cb);
+    del([config.distDir], cb);
 });
 
 /////////////////
@@ -75,105 +76,105 @@ gulp.task('clean:dist', function(cb) {
 gulp.task('build', ['clean:build'], function() {
 
     // copy vendor stuff
-    var vendorJs = gulp.src(filepaths.vendor.js, {base: 'vendor'})
-                       .pipe(gulp.dest(filepaths.buildDir+'/vendor'));
+    var vendorJs = gulp.src(config.vendor.js, {base: 'vendor'})
+                       .pipe(gulp.dest(config.buildDir+'/vendor'));
 
-    var vendorCss = gulp.src(filepaths.vendor.css, {base: 'vendor'})
+    var vendorCss = gulp.src(config.vendor.css, {base: 'vendor'})
                         .pipe(rename(function(path) {
                             path.dirname = '';
                         }))
-                       .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+                       .pipe(gulp.dest(config.buildDir+'/assets'));
 
-    gulp.src(filepaths.vendor.assets, {base:'vendor'})
+    gulp.src(config.vendor.assets, {base:'vendor'})
         .pipe(rename(function(path) {
             path.dirname = '';
         }))
-        .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+        .pipe(gulp.dest(config.buildDir+'/assets'));
 
-    gulp.src(filepaths.vendor.fonts, {base:'vendor'})
+    gulp.src(config.vendor.fonts, {base:'vendor'})
         .pipe(rename(function(path) {
             path.dirname = '';
         }))
-        .pipe(gulp.dest(filepaths.buildDir+'/fonts'));
+        .pipe(gulp.dest(config.buildDir+'/fonts'));
 
     // copy app stuff
-    var appCss = gulp.src(filepaths.app.stylus)
+    var appCss = gulp.src(config.app.stylus)
                      .pipe(stylus())
                      .pipe(rename(pkg.name+'.'+pkg.version+'.css'))
-                     .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+                     .pipe(gulp.dest(config.buildDir+'/assets'));
 
-    var appTpl = gulp.src(filepaths.app.tpl)
+    var appTpl = gulp.src(config.app.tpl)
                      .pipe(html2js({
-                      outputModuleName: 'App.Templates',
+                      outputModuleName: config.templateModuleName,
                       useStrict: true
                      }))
                      .pipe(concat('templates.js'));
 
-    var appJs = es.merge(gulp.src(filepaths.app.js, {base:'src'}), appTpl)
-                    .pipe(gulp.dest(filepaths.buildDir))
+    var appJs = es.merge(gulp.src(config.app.js, {base:'src'}), appTpl)
+                    .pipe(gulp.dest(config.buildDir))
                     .pipe(angularFilesort());
 
-    gulp.src(filepaths.app.assets)
-        .pipe(gulp.dest(filepaths.buildDir+'/assets'));
+    gulp.src(config.app.assets)
+        .pipe(gulp.dest(config.buildDir+'/assets'));
 
-    gulp.src(filepaths.app.fonts)
-        .pipe(gulp.dest(filepaths.buildDir+'/fonts'));
+    gulp.src(config.app.fonts)
+        .pipe(gulp.dest(config.buildDir+'/fonts'));
 
     return gulp.src('./src/index.html')
                .pipe(inject(es.merge(vendorCss, vendorJs), {name:'vendor', ignorePath:'build'}))
                .pipe(inject(es.merge(appCss, appJs), {ignorePath:'build'}))
-               .pipe(gulp.dest(filepaths.buildDir));
+               .pipe(gulp.dest(config.buildDir));
 
 });
 
 gulp.task('dist', ['clean:dist'], function() {
-    var vendorJs = gulp.src(filepaths.vendor.js)
+    var vendorJs = gulp.src(config.vendor.js)
                        .pipe(concat('vendor.js'))
-                       .pipe(gulp.dest(filepaths.distDir+'/assets'));
+                       .pipe(gulp.dest(config.distDir+'/assets'));
 
-    var appTpl = gulp.src(filepaths.app.tpl)
+    var appTpl = gulp.src(config.app.tpl)
                      .pipe(html2js({
-                      outputModuleName: 'App.Templates',
+                      outputModuleName: config.templateModuleName,
                       useStrict: true
                      }));
-    var appJs = es.merge(gulp.src(filepaths.app.js), appTpl)
+    var appJs = es.merge(gulp.src(config.app.js), appTpl)
                     .pipe(angularFilesort())
                     .pipe(concat(pkg.name+'.'+pkg.version+'.js'))
-                    .pipe(gulp.dest(filepaths.distDir+'/assets'));
+                    .pipe(gulp.dest(config.distDir+'/assets'));
 
     var js = es.merge(vendorJs, appJs).pipe(order(['vendor.js', pkg.name+'.'+pkg.version+'.js']));
 
-    var appCss = gulp.src(filepaths.app.stylus)
+    var appCss = gulp.src(config.app.stylus)
                      .pipe(stylus({compress:true}));
 
-    var css = es.merge(gulp.src(filepaths.vendor.css), appCss)
+    var css = es.merge(gulp.src(config.vendor.css), appCss)
                   .pipe(order([
                     'vendor/**/*.css'
                   ]))
                   .pipe(concat(pkg.name+'.'+pkg.version+'.css'))
-                  .pipe(gulp.dest(filepaths.distDir+'/assets'));
+                  .pipe(gulp.dest(config.distDir+'/assets'));
 
-    gulp.src(filepaths.app.assets)
-        .pipe(gulp.dest(filepaths.distDir+'/assets'));
+    gulp.src(config.app.assets)
+        .pipe(gulp.dest(config.distDir+'/assets'));
 
-    gulp.src(filepaths.app.fonts)
-        .pipe(gulp.dest(filepaths.distDir+'/fonts'));
+    gulp.src(config.app.fonts)
+        .pipe(gulp.dest(config.distDir+'/fonts'));
 
     return gulp.src('./src/index.html')
                .pipe(inject(es.merge(js,css), {ignorePath:'dist'}))
-               .pipe(gulp.dest(filepaths.distDir));
+               .pipe(gulp.dest(config.distDir));
 });
 
 gulp.task('default', ['build', 'browser-sync'], function() {
     gulp.watch('./src/**/*.styl', function() {
-        return gulp.src(filepaths.app.stylus)
+        return gulp.src(config.app.stylus)
                    .pipe(stylus())
                    .pipe(rename(pkg.name+'.'+pkg.version+'.css'))
-                   .pipe(gulp.dest(filepaths.buildDir+'/assets'))
+                   .pipe(gulp.dest(config.buildDir+'/assets'))
                    .pipe(browserSync.reload({stream:true}));
     });
 
-    gulp.watch(filepaths.app.js, ['build', browserSync.reload]);
-    gulp.watch(filepaths.app.tpl, ['build', browserSync.reload]);
+    gulp.watch(config.app.js, ['build', browserSync.reload]);
+    gulp.watch(config.app.tpl, ['build', browserSync.reload]);
     gulp.watch('./src/index.html', ['build', browserSync.reload]);
 });
