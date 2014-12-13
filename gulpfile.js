@@ -9,6 +9,7 @@ var es = require('event-stream');
 var angularFilesort = require('gulp-angular-filesort');
 var concat = require('gulp-concat');
 var order = require('gulp-order');
+var html2js = require('gulp-html2js');
 
 //////////////////
 //  File paths  //
@@ -18,6 +19,9 @@ var filepaths = {
         js: [
             './src/app/**/*.js',
             '!./src/app/**/*.spec.js'
+        ],
+        tpl: [
+          './src/app/**/*.tpl.html'
         ],
         stylus: './src/stylus/main.styl',
         assets: './src/assets/**/*.*',
@@ -98,7 +102,14 @@ gulp.task('build', ['clean:build'], function() {
                      .pipe(rename(pkg.name+'.'+pkg.version+'.css'))
                      .pipe(gulp.dest(filepaths.buildDir+'/assets'));
 
-    var appJs = gulp.src(filepaths.app.js, {base:'src'})
+    var appTpl = gulp.src(filepaths.app.tpl)
+                     .pipe(html2js({
+                      outputModuleName: 'App.Templates',
+                      useStrict: true
+                     }))
+                     .pipe(concat('templates.js'));
+
+    var appJs = es.merge(gulp.src(filepaths.app.js, {base:'src'}), appTpl)
                     .pipe(gulp.dest(filepaths.buildDir))
                     .pipe(angularFilesort());
 
@@ -119,7 +130,13 @@ gulp.task('dist', ['clean:dist'], function() {
     var vendorJs = gulp.src(filepaths.vendor.js)
                        .pipe(concat('vendor.js'))
                        .pipe(gulp.dest(filepaths.distDir+'/assets'));
-    var appJs = gulp.src(filepaths.app.js)
+
+    var appTpl = gulp.src(filepaths.app.tpl)
+                     .pipe(html2js({
+                      outputModuleName: 'App.Templates',
+                      useStrict: true
+                     }));
+    var appJs = es.merge(gulp.src(filepaths.app.js), appTpl)
                     .pipe(angularFilesort())
                     .pipe(concat(pkg.name+'.'+pkg.version+'.js'))
                     .pipe(gulp.dest(filepaths.distDir+'/assets'));
@@ -157,6 +174,6 @@ gulp.task('default', ['build', 'browser-sync'], function() {
     });
 
     gulp.watch(filepaths.app.js, ['build', browserSync.reload]);
-
+    gulp.watch(filepaths.app.tpl, ['build', browserSync.reload]);
     gulp.watch('./src/index.html', ['build', browserSync.reload]);
 });
