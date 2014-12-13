@@ -106,7 +106,8 @@ gulp.task('build', ['clean:build'], function() {
     var appTpl = gulp.src(config.app.tpl)
                      .pipe(html2js({
                       outputModuleName: config.templateModuleName,
-                      useStrict: true
+                      useStrict: true,
+                      base: './src/app'
                      }))
                      .pipe(concat('templates.js'));
 
@@ -135,7 +136,8 @@ gulp.task('dist', ['clean:dist'], function() {
     var appTpl = gulp.src(config.app.tpl)
                      .pipe(html2js({
                       outputModuleName: config.templateModuleName,
-                      useStrict: true
+                      useStrict: true,
+                      base: './src/app'
                      }));
     var appJs = es.merge(gulp.src(config.app.js), appTpl)
                     .pipe(angularFilesort())
