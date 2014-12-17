@@ -10,6 +10,8 @@ var angularFilesort = require('gulp-angular-filesort');
 var concat = require('gulp-concat');
 var order = require('gulp-order');
 var html2js = require('gulp-html2js');
+var jshint = require('gulp-jshint');
+var plumber = require('gulp-plumber');
 
 //////////////////
 //  File paths  //
@@ -111,7 +113,12 @@ gulp.task('build', ['clean:build'], function() {
                      }))
                      .pipe(concat('templates.js'));
 
-    var appJs = es.merge(gulp.src(config.app.js, {base:'src'}), appTpl)
+    var tempAppJs = gulp.src(config.app.js, {base:'src'})
+                        .pipe(plumber())
+                        .pipe(jshint())
+                        .pipe(jshint.reporter('jshint-stylish'))
+
+    var appJs = es.merge(tempAppJs, appTpl)
                     .pipe(gulp.dest(config.buildDir))
                     .pipe(angularFilesort());
 
