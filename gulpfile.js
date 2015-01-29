@@ -16,8 +16,9 @@ var plumber = require('gulp-plumber');
 //////////////////
 //  File paths  //
 //////////////////
-var config = {
+gulp.paths = {
     templateModuleName: 'App.Templates',
+    src: './src',
     app: {
         js: [
             './src/app/**/*.js',
@@ -46,6 +47,13 @@ var config = {
     buildDir: './build',
     distDir: './dist'
 };
+
+require('require-dir')('./gulp');
+
+gulp.task('default', ['clean'], function() {
+  gulp.start('serve');
+});
+
 
 ///////////////////
 //  BrowserSync  //
