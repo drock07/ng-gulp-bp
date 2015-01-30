@@ -1,15 +1,14 @@
 'use strict';
 
 var gulp = require('gulp');
+var paths = gulp.paths;
 
-gulp.task('watch', [], function() {
-	gulp.watch([
-		gulp.paths.src + '/*.html',
-		gulp.paths.src + '/{app, components}/**/*.js',
-		'!' + gulp.paths.src + '/{app, components}/**/**.spec.js'
-	], []);
-});
+var browserSync = require('browser-sync');
 
-gulp.task('serve', [], function() {
-
+gulp.task('serve', ['watch'], function() {
+    browserSync({
+        server: {
+            baseDir: paths.buildDir
+        }
+    });
 });
